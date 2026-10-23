@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data outputs & cache files
+*.csv
+*.gpkg
+*.shp
+
+# IDE configurations
+.vscode/
+.idea/
+
+# Distribution / packaging files
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
