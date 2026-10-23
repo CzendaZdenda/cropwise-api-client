@@ -105,6 +105,3 @@ print(df_telemetry.head())
 ## 📄 License
 
 This library is distributed under the MIT License. See [LICENSE](LICENSE) for more details.
-
-
-[Читать на русском](https://github.com/CzendaZdenda/cropwise-api-client/blob/main/README.ru.md)
