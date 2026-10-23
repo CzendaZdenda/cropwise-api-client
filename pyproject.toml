@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "cropwise-api-client"
 version = "0.1.0"
-description = "A professional Python client library for the Cropwise Operations API v3 with spatial GIS capabilities."
+description = "A Python client library for the Cropwise Operations API v3 with spatial GIS capabilities."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
@@ -13,7 +13,7 @@ authors = [
     { name = "CzendaZdenda", email = "tramtara@seznam.cz" }
 ]
 classifiers = [
-    "Development Status :: 4 - Beta"
+    "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -24,13 +24,11 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: GIS",
 ]
-# Core lightweight dependencies needed for basic API interactions
 dependencies = [
     "requests>=2.28.0",
     "pandas>=1.5.0"
 ]
 
-# GIS extensions separated into an optional installation block
 [project.optional-dependencies]
 gis = [
     "geopandas>=0.12.0",
