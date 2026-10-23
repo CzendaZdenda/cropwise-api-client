@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cropwise-api-client"
-version = "0.1.0"
+version = "0.1.6"
 description = "A Python client library for the Cropwise Operations API v3 with spatial GIS capabilities."
 readme = "README.md"
 requires-python = ">=3.8"
