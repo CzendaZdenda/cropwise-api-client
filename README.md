@@ -1,7 +1,5 @@
 # Cropwise API Client for Python
 
-[Читать на русском](README.ru.md)
-
 A Python client library wrapper for the **Cropwise Operations (Cropio) API v3** featuring automated pagination, request retries, and optional spatial GIS data processing capabilities.
 
 > ⚠️ **Development Status: Beta**  
@@ -107,3 +105,6 @@ print(df_telemetry.head())
 ## 📄 License
 
 This library is distributed under the MIT License. See [LICENSE](LICENSE) for more details.
+
+
+[Читать на русском](https://github.com/CzendaZdenda/cropwise-api-client/blob/main/README.ru.md)
