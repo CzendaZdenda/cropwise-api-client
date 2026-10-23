@@ -36,5 +36,8 @@ gis = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/CzendaZdenda"
-Bug-Tracker = "https://github.com/CzendaZdenda"
+Homepage = "https://github.com/CzendaZdenda/cropwise-api-client"
+Bug-Tracker = "https://github.com/CzendaZdenda/cropwise-api-client"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cropwise"]
