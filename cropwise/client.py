@@ -1,13 +1,14 @@
 # cropwise/client.py
 
 import json
+from datetime import date, datetime
 import logging
 from typing import Dict, Any, List, Optional, Union
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 import pandas as pd
-from .exceptions import CropwiseAuthException, CropwiseApiException
+from .exceptions import CropwiseAuthException, CropwiseApiException, CropwiseValueError, CropwiseOdometerDuplicateError
 
 # Set up library-specific logger
 logger = logging.getLogger("cropwise")
@@ -29,7 +30,8 @@ class CropwiseClient:
         token: Optional[str] = None, 
         email: Optional[str] = None, 
         password: Optional[str] = None, 
-        server_url: str = 'https://operations.cropwise.com/api/v3'
+        server_url: str = 'https://operations.cropwise.com/api/v3',
+        timezone_offset: str = "+0000"
     ):
         """
         Python client wrapper for the Cropwise Operations API v3.
@@ -38,11 +40,13 @@ class CropwiseClient:
         :param email: User login email (used if token is not provided).
         :param password: User login password (used if token is not provided).
         :param server_url: Base API server URL.
+        :param timezone_offset: Stores company timezone offset (e.g. "+0200" for Kaliningrad).
         """
         self.server_url = server_url.rstrip('/')
         self._token = token
         self._email = email
         self._password = password
+        self.timezone_offset = timezone_offset
         
         # Initialize an HTTP session with built-in retry logic
         self.session = requests.Session()
@@ -609,3 +613,83 @@ class CropwiseClient:
         
         full_endpoint = f"{endpoint}/{object_id}"
         return self._send_mutation('PUT', full_endpoint, payload)
+
+    def create_odometer_state(
+        self, 
+        machine_id: int, 
+        date_at: Union[datetime, date], 
+        mileage: Optional[float] = None, 
+        work_hours: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """
+        Creates a new odometer state record (mileage and/or work hours) for a specific machine.
+        
+        Date or Datetime:
+        -----------------
+        To ensure your readings appear correctly in the regional web interface without shifting 
+        to the previous day, this method appends the client's `timezone_offset` (e.g., "+0100" 
+        for Copenhagen, Denmark) to the formatted timestamp.
+        
+        1. Date:
+           Automatically converted to 'YYYY-MM-DD 00:00:00 +XXXX' using your client's timezone.
+           
+        2. Datetime:
+           Formatted as 'YYYY-MM-DD HH:MM:SS +XXXX' using your client's timezone.
+        
+        :param machine_id: Unique identifier of the machine (Machine ID).
+        :param date_at: Target time or date for the entry. Supports 'datetime' and 'date'.
+        :param mileage: Distance counter value (manual_distance in km). Optional.
+        :param work_hours: Engine hours duration (manual_engine_work_duration in hours). Optional.
+        :return: Server response parsed as a dictionary.
+        :raises CropwiseValueError: If telemetry inputs or date types are invalid.
+        :raises CropwiseOdometerDuplicateError: If a record already exists at the given timestamp.
+        
+        """
+        # Validate input telemetry data
+        if mileage is None and work_hours is None:
+            raise CropwiseValueError("You must provide either 'mileage' or 'work_hours' to save an odometer state.")
+            
+        # Format measuring time keeping client timezone offset in mind
+        if isinstance(date_at, datetime):
+            # If the object is timezone-aware, extract its own offset, otherwise append client's global offset
+            if date_at.tzinfo is not None:
+                time_str = date_at.strftime("%Y-%m-%d %H:%M:%S %z")
+            else:
+                time_str = f"{date_at.strftime('%Y-%m-%d %H:%M:%S')} {self.timezone_offset}"
+          
+        elif isinstance(date_at, date):
+            # For pure date objects, default to midnight in the client's local timezone
+            time_str = f"{date_at.strftime('%Y-%m-%d')} 00:00:00 {self.timezone_offset}"
+            
+        else:
+            raise CropwiseValueError("The 'date_at' parameter must be a datetime or date object.")
+
+        # Structure flat data attributes as expected by Cropwise API v3 REST endpoint schema
+        object_attributes = {
+            "machine_id": str(machine_id),
+            "measuring_time": time_str
+        }
+        
+        if mileage is not None:
+            object_attributes["manual_distance"] = str(mileage)
+            
+        if work_hours is not None:
+            # CRITICAL STEP: Cropwise API v3 endpoint expects engine work duration strictly in SECONDS.
+            # We automatically convert user-provided hours (int or float) to integer seconds.
+            work_seconds = int(work_hours * 3600)
+            object_attributes["manual_engine_work_duration"] = str(work_seconds)
+
+        try:
+            return self.create_object(endpoint="odometer_states", data=object_attributes)
+
+        except CropwiseApiException as e:
+            # Check for HTTP 422 structural indicators inside the exception object
+            # Language-agnostic approach: look for 'measuring_time' key in server context/error string
+            error_str = str(e)
+            
+            if "422" in error_str and "measuring_time" in error_str:
+                raise CropwiseOdometerDuplicateError(
+                    f"Odometer record already exists for machine {machine_id} at {time_str}. "
+                    f"Original server response: {error_str}"
+                ) from e
+            raise e

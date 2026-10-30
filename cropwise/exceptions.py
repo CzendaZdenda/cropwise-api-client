@@ -20,3 +20,18 @@ class CropwiseApiException(CropwiseException):
     Handles standard HTTP error statuses such as 4xx and 5xx responses.
     """
     pass
+
+
+class CropwiseValueError(CropwiseException):
+    """
+    Raised when user provides invalid argument values, shapes, 
+    or unparseable date/time strings to library methods.
+    """
+    pass
+
+class CropwiseOdometerDuplicateError(CropwiseApiException):
+    """
+    Raised when an odometer state record already exists for the specified timestamp.
+    Typically triggered by a language-agnostic HTTP 422 error containing 'measuring_time'.
+    """
+    pass
