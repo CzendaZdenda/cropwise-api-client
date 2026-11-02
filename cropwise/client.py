@@ -586,6 +586,22 @@ class CropwiseClient:
                 
         return df
 
+    def get_additional_objects(self, **kwargs) -> pd.DataFrame:
+        """
+        Get additional objects with optional filters.
+        
+        Exact match:
+            id, field_group_id, name, object_type, additional_info, description, geometry_type, 
+            administrative_area_name, subadministrative_area_name, locality, external_id
+
+        Comparison (append _eq, _gt, _gt_eq, _lt or _lt_eq to attribute, e.g. created_at_gt):
+            calculated_area, created_at, updated_at
+
+        Sorting (sort_by=<attribute>_<asc|desc>, e.g. sort_by=created_at_desc):
+            id, created_at, updated_at
+        """
+        return self._request_and_parse('additional_objects', kwargs)
+
     def create_object(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Creates a new object (e.g., machine_tasks, machine_task_field_mapping_items) on the server.
