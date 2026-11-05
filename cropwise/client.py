@@ -194,7 +194,7 @@ class CropwiseClient:
 
     def _send_mutation(self, method: str, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Internal helper to handle POST, PUT, or PATCH mutation requests to the API.
+        Internal helper to handle POST, PUT, PATCH or DELETE mutation requests to the API.
         """
         url = f'{self.server_url}/{endpoint}'
         
@@ -629,6 +629,17 @@ class CropwiseClient:
         
         full_endpoint = f"{endpoint}/{object_id}"
         return self._send_mutation('PUT', full_endpoint, payload)
+
+    def delete_object(self, endpoint: str, object_id: Union[int, str]) -> Dict[str, Any]:
+        """
+        Deletes an existing object on the server using the HTTP DELETE method.
+        
+        :param endpoint: The API collection name (e.g., 'additional_objects').
+        :param object_id: Unique identifier of the resource to be deleted.
+        :return: Server response as a dictionary.
+        """
+        full_endpoint = f"{endpoint}/{object_id}"
+        return self._send_mutation('DELETE', full_endpoint, data={})
 
     def create_odometer_state(
         self, 
