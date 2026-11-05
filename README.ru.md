@@ -135,7 +135,7 @@ from cropwise import CropwiseClient
 
 client = CropwiseClient(token="your_token")
 
-# Получение дополнительных объектов с типом "канвременные дорогиалы"
+# Получение дополнительных объектов с типом "временные дороги"
 objects_df = client.get_additional_objects(object_type="временные дороги").set_index('id')
 
 # Удаление объектов с сервера
