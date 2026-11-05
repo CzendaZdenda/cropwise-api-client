@@ -102,6 +102,50 @@ df_telemetry = client.get_logger_event_data(
 print(df_telemetry.head())
 ```
 
+### 4. Update Additional Objects Map Display (Line Width and Color)
+
+Change line width and color of specific Additonal objects:
+
+```python
+from cropwise import CropwiseClient
+
+client = CropwiseClient(token="your_token")
+
+# Get additional objects with type = "channels"
+objects_df = client.get_additional_objects(object_type="channels").set_index('id')
+
+data = {
+    "line_width": 4,
+    "line_color": "#00aeff",
+}
+
+# Update objects
+for i in objects_df.index.to_list():
+    print(objects_df.loc[i]['name'])
+    client.update_object(endpoint='additional_objects', object_id=i, data=data)
+```
+
+### 5. Delete Additional Objects (Temporary Roads)
+
+Remove specific additional objects from the server by their type:
+
+```python
+from cropwise import CropwiseClient
+
+client = CropwiseClient(token="your_token")
+
+# Get additional objects with type = "temporary_roads"
+objects_df = client.get_additional_objects(object_type="temporary_roads").set_index('id')
+
+# Delete objects from the server
+for object_id in objects_df.index.to_list():
+    object_name = objects_df.loc[object_id]['name']
+    print(f"Deleting object: {object_name} (ID: {object_id})")
+    
+    # Remove the object using the DELETE method
+    client.delete_object(endpoint='additional_objects', object_id=object_id)
+```
+
 ## 📄 License
 
 This library is distributed under the MIT License. See [LICENSE](LICENSE) for more details.

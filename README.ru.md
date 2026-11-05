@@ -103,6 +103,50 @@ df_telemetry = client.get_logger_event_data(
 print(df_telemetry.head())
 ```
 
+### 4. Обновление отображение на картах дополнительных объектов (ширина и цвет линий)
+
+Изменение ширины и цвета линий для конкретных дополнительных объектов:
+
+```python
+from cropwise import CropwiseClient
+
+client = CropwiseClient(token="your_token")
+
+# Получение дополнительных объектов с типом "каналы"
+objects_df = client.get_additional_objects(object_type="каналы").set_index('id')
+
+data = {
+    "line_width": 4,
+    "line_color": "#00aeff",
+}
+
+# Обновление объектов
+for i in objects_df.index.to_list():
+    print(objects_df.loc[i]['name'])
+    client.update_object(endpoint='additional_objects', object_id=i, data=data)
+```
+
+### 5. Удаление дополнительных объектов (временные дороги)
+
+Получение дополнительных объектов с типом "временные дороги":
+
+```python
+from cropwise import CropwiseClient
+
+client = CropwiseClient(token="your_token")
+
+# Получение дополнительных объектов с типом "канвременные дорогиалы"
+objects_df = client.get_additional_objects(object_type="временные дороги").set_index('id')
+
+# Удаление объектов с сервера
+for object_id in objects_df.index.to_list():
+    object_name = objects_df.loc[object_id]['name']
+    print(f"Удаление объекта: {object_name} (ID: {object_id})")
+    
+    # Удаление объекта с помощью метода DELETE
+    client.delete_object(endpoint='additional_objects', object_id=object_id)
+```
+
 ## 📄 Лицензия
 
 Проект распространяется под открытой лицензией MIT. Подробности см. в файле [LICENSE](LICENSE).
