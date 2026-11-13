@@ -308,6 +308,36 @@ class CropwiseClient:
         """
         return self._request_and_parse('machine_groups', kwargs)
 
+    def get_machine_regions(self, **kwargs) -> pd.DataFrame:
+        """
+        Fetches machine regions with optional filters.
+        
+        Exact match:
+            id, name, ancestry, hidden, external_id
+
+        Comparison (append _eq, _gt, _gt_eq, _lt or _lt_eq to attribute, e.g. created_at_gt):
+            created_at, updated_at
+
+        Sorting (sort_by=<attribute>_<asc|desc>, e.g. sort_by=created_at_desc):
+            id, created_at, updated_at
+        """
+        return self._request_and_parse('machine_regions', kwargs)
+
+    def get_machine_region_mapping_items(self, **kwargs) -> pd.DataFrame:
+        """
+        Fetches mapping links between machines and regions.
+        
+        Exact match:
+            id, machine_id, machine_region_id, date_start, date_end, no_date_end
+
+        Comparison (append _eq, _gt, _gt_eq, _lt or _lt_eq to attribute, e.g. created_at_gt):
+            date_start, date_end, created_at, updated_at
+
+        Sorting (sort_by=<attribute>_<asc|desc>, e.g. sort_by=created_at_desc):
+            id, created_at, updated_at
+        """
+        return self._request_and_parse('machine_region_mapping_items', kwargs)
+    
     def get_implements(self, **kwargs) -> pd.DataFrame:
         """
         Fetches attached agricultural implements with optional filters.
