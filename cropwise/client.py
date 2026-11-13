@@ -226,6 +226,21 @@ class CropwiseClient:
         """
         return self._request_and_parse('fields', kwargs)
 
+    def get_field_groups(self, **kwargs) -> pd.DataFrame:
+        """
+        Fetches field groups with optional filters.
+        
+        Exact match:
+            id, name, group_folder_id, description, administrative_area_name, subadministrative_area_name, locality, external_id, hidden
+
+        Comparison (append _eq, _gt, _gt_eq, _lt or _lt_eq to attribute, e.g. created_at_gt):
+            created_at, updated_at
+
+        Sorting (sort_by=<attribute>_<asc|desc>, e.g. sort_by=created_at_desc):
+            id, created_at, updated_at
+        """
+        return self._request_and_parse('field_groups', kwargs)
+    
     def get_machines(self, **kwargs) -> pd.DataFrame:
         """
         Fetches all registered agricultural machinery.
