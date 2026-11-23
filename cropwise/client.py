@@ -240,7 +240,22 @@ class CropwiseClient:
             id, created_at, updated_at
         """
         return self._request_and_parse('field_groups', kwargs)
-    
+
+    def get_group_folders(self, **kwargs) -> pd.DataFrame:
+        """
+        Fetches group folders with optional filters.
+        
+        Exact match:
+            id, name, hidden, external_id, cwp_type, cwp_id
+
+        Comparison (append _eq, _gt, _gt_eq, _lt or _lt_eq to attribute, e.g. created_at_gt):
+            created_at, updated_at
+
+        Sorting (sort_by=<attribute>_<asc|desc>, e.g. sort_by=created_at_desc):
+            id, created_at, updated_at
+        """
+        return self._request_and_parse('group_folders', kwargs)
+        
     def get_machines(self, **kwargs) -> pd.DataFrame:
         """
         Fetches all registered agricultural machinery.
