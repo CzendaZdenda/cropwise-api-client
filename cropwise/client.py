@@ -15,14 +15,39 @@ logger = logging.getLogger("cropwise")
 
 # Standard Cropwise API response status mapping
 RESPONSE_STATUS = {
-    400: ('Bad Request', 'The request could not be understood or was missing required parameters.'),
-    401: ('Unauthorized', 'Authentication failed or user doesn\'t have permissions for requested operation.'),
+    400: (
+        'Bad Request',
+        'The request could not be understood or was missing required parameters.',
+    ),
+    401: (
+        'Unauthorized',
+        (
+            "Authentication failed or user doesn't have permissions for"
+            ' requested operation.'
+        ),
+    ),
     403: ('Forbidden', 'Access denied.'),
     404: ('Not Found', 'Resource was not found.'),
-    422: ('Unprocessable Entity', 'The request was well-formed but failed due to semantic errors.'),
-    503: ('Service Unavailable', 'Service is temporarily unavailable (e.g. scheduled Platform Maintenance).')
+    413: (
+        'Payload Too Large',
+        'Request URI or query parameters exceed server limits.',
+    ),
+    414: ('URI Too Long', 'Request URI exceeds server limits.'),
+    422: (
+        'Unprocessable Entity',
+        'The request was well-formed but failed due to semantic errors.',
+    ),
+    503: (
+        'Service Unavailable',
+        (
+            'Service is temporarily unavailable (e.g. scheduled Platform'
+            ' Maintenance).'
+        ),
+    ),
 }
 
+# Safe character limit for a single comma-separated list parameter (~200-250 IDs)
+MAX_QUERY_PARAM_LENGTH = 2000
 
 class CropwiseClient:
     def __init__(
@@ -186,11 +211,108 @@ class CropwiseClient:
             
         return df
 
-    def _request_and_parse(self, endpoint: str, kwargs: dict) -> pd.DataFrame:
-        """Internal helper to process filters, fetch all pages, and return a DataFrame."""
+    def _split_list_filters(
+        self, kwargs: Dict[str, Any], max_param_len: int = MAX_QUERY_PARAM_LENGTH
+    ) -> List[Dict[str, Any]]:
+        """
+        Splits kwargs into a list of independent filter dictionaries if any list-like
+        parameter (list/tuple/set) exceeds max_param_len when serialized.
+        """
+        # Find the first list-like parameter that exceeds the length threshold
+        for key, val in kwargs.items():
+            if isinstance(val, (list, tuple, set)):
+                # Preserve order while deduplicating IDs
+                items = list(dict.fromkeys(val))
+                if not items:
+                    continue
+
+                # Check the total serialized length of "id1,id2,..."
+                if len(','.join(str(x) for x in items)) > max_param_len:
+                    chunks = []
+                    current_batch = []
+                    current_len = 0
+
+                    for item in items:
+                        item_str = str(item)
+                        # Account for +1 character for the comma separator
+                        added_len = len(item_str) + (1 if current_batch else 0)
+                        if current_batch and (current_len + added_len > max_param_len):
+                            batch_kwargs = kwargs.copy()
+                            batch_kwargs[key] = current_batch
+                            # Recursively check remaining parameters in case multiple large lists exist
+                            chunks.extend(self._split_list_filters(batch_kwargs, max_param_len))
+                            current_batch = [item]
+                            current_len = len(item_str)
+                        else:
+                            current_batch.append(item)
+                            current_len += added_len
+
+                    if current_batch:
+                        batch_kwargs = kwargs.copy()
+                        batch_kwargs[key] = current_batch
+                        chunks.extend(self._split_list_filters(batch_kwargs, max_param_len))
+
+                    return chunks
+
+        return [kwargs]
+
+    def _fetch_single_or_split(self, endpoint: str, kwargs: dict) -> List[Dict[str, Any]]:
+        """
+        Executes _get_all_pages and automatically bisects the longest list filter
+        upon receiving HTTP 413/414, retrying the sub-batches recursively.
+        """
         filters = self._prepare_filters(kwargs)
-        data = self._get_all_pages(endpoint, filter_params=filters)
-        return self._to_dataframe(data, filters)
+        try:
+            return self._get_all_pages(endpoint, filter_params=filters)
+        except CropwiseApiException as e:
+            if "HTTP 413" not in str(e) and "HTTP 414" not in str(e):
+                raise
+
+            # Identify the longest list-like filter in kwargs that can still be split
+            longest_key = None
+            longest_len = 1
+            for k, v in kwargs.items():
+                if isinstance(v, (list, tuple, set)) and len(v) > longest_len:
+                    longest_key = k
+                    longest_len = len(v)
+
+            if longest_key is None:
+                raise
+
+            seq = list(kwargs[longest_key])
+            mid = len(seq) // 2
+            logger.warning(
+                f"HTTP 413/414 on '{endpoint}'. Splitting '{longest_key}' "
+                f"({len(seq)} items) into {mid} and {len(seq) - mid}..."
+            )
+
+            left_kwargs = {**kwargs, longest_key: seq[:mid]}
+            right_kwargs = {**kwargs, longest_key: seq[mid:]}
+
+            return (
+                self._fetch_single_or_split(endpoint, left_kwargs)
+                + self._fetch_single_or_split(endpoint, right_kwargs)
+            )
+
+    def _request_and_parse(self, endpoint: str, kwargs: dict) -> pd.DataFrame:
+        """Internal helper to process filters, auto-chunk large ID lists, fetch all pages, and return a DataFrame."""
+        batches = self._split_list_filters(kwargs)
+
+        if len(batches) > 1:
+            logger.info(f"Query for '{endpoint}' split into {len(batches)} chunks to avoid URI length limits.")
+
+        all_data: List[Dict[str, Any]] = []
+        for batch_kwargs in batches:
+            all_data.extend(self._fetch_single_or_split(endpoint, batch_kwargs))
+
+        # Pass only 'sort_by' to _to_dataframe to preserve default sorting behavior
+        df = self._to_dataframe(all_data, self._prepare_filters({'sort_by': kwargs.get('sort_by')}))
+
+        # Safeguard against duplicate records across batch boundaries
+        if not df.empty and 'id' in df.columns:
+            df = df.drop_duplicates(subset=['id'])
+
+        return df
 
     def _send_mutation(self, method: str, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
